@@ -138,7 +138,7 @@ const WeatherInfo = () => {
       }
       return day;
   };
-
+  //call API from (CurrentWeatherAPI) for today weather and (5 days Forecast API) for the forecast
   const fetchWeatherData = async () => {
     try{
       getTodayTime();      
@@ -146,25 +146,19 @@ const WeatherInfo = () => {
         axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${process.env.REACT_APP_API_KEY}`),
         axios.get(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${process.env.REACT_APP_API_KEY}`)
       ]);
-
       
       // Set state only if both requests succeed
         if (currentWeather && forecastWeather) {
-          
           setCurrentWeatherData(currentWeather.data);
           setForecastWeatherData(forecastWeather.data);
         }
-      
     }catch(error){
       console.log("Error fetching weather data: ", error);
     }
-
-    
   };
   
   //return the image src based on weather description
   const generateWeatherLogo = (desc) => {
-    
     let logo="";
     switch(desc){
       case "clear sky":
@@ -177,14 +171,14 @@ const WeatherInfo = () => {
         logo="03d";
         break;
       case "broken clouds":
-        logo="04d";
-        break;
       case "overcast clouds":
         logo="04d";
         break;
       case "shower rain":
         logo="09d";
         break;
+      case "moderate rain":
+      case "light rain":
       case "rain":
           logo="10d";
           break;
@@ -203,6 +197,7 @@ const WeatherInfo = () => {
     let imgLink = `https://openweathermap.org/img/wn/${logo}.png`;
     return imgLink;
   };
+
   //Automatically fetches the current and forecast weather upon refresh page
   useEffect(()=>{
     fetchWeatherData();  
@@ -222,7 +217,6 @@ const WeatherInfo = () => {
       setMaxTempDisplay(currentWeatherData.main?.temp_max || "");
       setHumidityDisplay(currentWeatherData.main?.humidity || "");
       setWeatherDescDisplay(currentWeatherData?.weather[0].description|| "");
-      //setDay(new Date(currentWeatherData?.dt_txt||"").dt_txt.slice(0,10)).getDay());
     }
   },[currentWeatherData]);
 
@@ -241,25 +235,26 @@ const WeatherInfo = () => {
       {currentWeatherData && forecastWeatherData && (
         <>
           <div id="current-weather">
-            <div id="current-weather-logo">
-              <img src={generateWeatherLogo(weatherDescDisplay)}/>
-              <p>{tempDisplay}°K</p>
-            </div>
-            <div id="current-weather-info">
-              <ul>
-                <li>Humidity: {humidityDisplay}%</li>
-                <li>Min temp: {minTempDisplay}°K</li>
-                <li>Max temp: {maxTempDisplay}°K</li>
-              </ul>
+            <div id="current-weather-left">
+                <div id="current-weather-logo">
+                <img src={generateWeatherLogo(weatherDescDisplay)}/>
+                <p>{tempDisplay}°K</p>
+              </div>
+              <div id="current-weather-info">
+                <ul>
+                  <li>Humidity: {humidityDisplay}%</li>
+                  <li>Min temp: {minTempDisplay}°K</li>
+                  <li>Max temp: {maxTempDisplay}°K</li>
+                </ul>
+              </div>
             </div>
             <div id="current-weather-datetime">
-              <p>{currentWeatherData.name}</p>
+              <p><strong>{currentWeatherData.name}</strong></p>
               <p>{day}, {time}</p>
-              <p>Weather: {weatherDescDisplay}</p>
+              <p>{weatherDescDisplay}</p>
             </div>
           </div>
           <div id="forecast-weather">
-            
             {forecastWeatherData && forecastArray ? 
             (
               forecastArray.map
@@ -268,15 +263,14 @@ const WeatherInfo = () => {
                     <div key={rowIndex}>
                     {  row.length >= 2 && row[2]?.dt_txt ? (
                         <button onClick={ () => displayWeatherInfo(row[2])}>
-                  
                         {formatDateTime(row[2]?.dt_txt || "").newDate}<br />
-                        <img src={generateWeatherLogo(row[2].weather[0].description)}/>
+                        <img src={generateWeatherLogo(row[2].weather[0].description)}/><br />
                         { row[2]?.main.temp  || ""}° 
                         </button>
                       ) : row[0]?.dt_txt ?(
                         <button onClick={ () => displayWeatherInfo(row[0])}>
                           {formatDateTime(row[0]?.dt_txt || "").newDate} <br />
-                          <img src={generateWeatherLogo(row[0].weather[0].description)}></img>
+                          <img src={generateWeatherLogo(row[0].weather[0].description)}></img><br />
                           { row[0]?.main.temp  || ""}° 
                         </button>
                       ):null }

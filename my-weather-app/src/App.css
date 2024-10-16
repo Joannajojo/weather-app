@@ -1,0 +1,8 @@
+body{
+    background-image: linear-gradient(to right,rgba(138, 168, 191), rgba(83, 151, 201));
+    background-repeat: no-repeat,
+}
+
+* {
+    margin: 0;
+}

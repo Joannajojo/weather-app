@@ -1,4 +1,9 @@
 #nav-bar{
-    background:rgba(132, 171, 232);
+    background:rgba(51, 92, 122);
     margin-top:0;
+    color:white;
+    padding-left: 20px;
+    text-align: center;
+    height:70px;
+    padding-top: 10px;
 }
