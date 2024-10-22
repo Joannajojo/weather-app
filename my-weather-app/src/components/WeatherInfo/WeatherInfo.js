@@ -11,6 +11,7 @@ const WeatherInfo = () => {
   const [time,setTime] = useState("");
   const [date,setDate] = useState("");
   const [day,setDay] = useState("");
+  const [tempUnit,setTempUnit] =useState("C");
 
   const [currentWeatherData, setCurrentWeatherData] = useState(null);
   const [forecastWeatherData, setForecastWeatherData] = useState(null);
@@ -21,13 +22,19 @@ const WeatherInfo = () => {
   const [maxTempDisplay,setMaxTempDisplay] = useState("");
   const [humidityDisplay,setHumidityDisplay] = useState("");
   const [weatherDescDisplay,setWeatherDescDisplay] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [celciusTempUnitActive,setCelciusTempUnitActive] = useState(true);
+  const [fahTempUnitActive,setFahTempUnitActive] = useState(false);
+
   const displayWeatherInfo = (value) => {
-    setTempDisplay(value.main.temp);
-    setMinTempDisplay(value.main.temp_min);
-    setMaxTempDisplay(value.main.temp_max);
+    setTempDisplay(convertTemp2CelFah(value.main.temp));
+    setMinTempDisplay(convertTemp2CelFah(value.main.temp_min));
+    setMaxTempDisplay(convertTemp2CelFah(value.main.temp_max));
     setHumidityDisplay(value.main.humidity);
     setWeatherDescDisplay(value.weather[0].description);
     setDay(getDay(new Date(value.dt_txt.slice(0,10)).getDay()));
+    setDate(formatDateTime(value.dt_txt).newDate);
     setTime(formatDateTime(value.dt_txt).newTime);
   }
   const formatDateTime = (dateTime) => {
@@ -96,7 +103,7 @@ const WeatherInfo = () => {
 		  const time = dateTime.toString().slice(11, 16);
       let dayOfWeek = dateObj.day_of_week;
       setDay(getDay(dayOfWeek));
-      setDate(date);
+      setDate(formatDateTime(date).newDate);
       setTime(time);
     }
     
@@ -141,6 +148,7 @@ const WeatherInfo = () => {
   //call API from (CurrentWeatherAPI) for today weather and (5 days Forecast API) for the forecast
   const fetchWeatherData = async () => {
     try{
+      setLoading(true);
       getTodayTime();      
       const [currentWeather, forecastWeather] = await Promise.all([
         axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${process.env.REACT_APP_API_KEY}`),
@@ -152,11 +160,16 @@ const WeatherInfo = () => {
           setCurrentWeatherData(currentWeather.data);
           setForecastWeatherData(forecastWeather.data);
         }
-    }catch(error){
+    } catch(error){
       console.log("Error fetching weather data: ", error);
+      setError("Failed to fetch weather data. Please try again.");
+    } finally {
+        setLoading(false);
     }
+    if (loading) return <div>Loading weather data...</div>;
+    if (error) return <div>{error}</div>;
   };
-  
+
   //return the image src based on weather description
   const generateWeatherLogo = (desc) => {
     let logo="";
@@ -190,7 +203,11 @@ const WeatherInfo = () => {
         break;
       case "mist":
         logo="50d";
-        break; 
+        break;
+      case "snow":
+      case "light snow":
+        logo="13d";
+        break;
       default:
         return "";
     }
@@ -198,10 +215,40 @@ const WeatherInfo = () => {
     return imgLink;
   };
 
-  //Automatically fetches the current and forecast weather upon refresh page
+  const setFirstLetterUppercase = (value) => {
+    let descArray = value.split(" ");
+    let capitalizedArray = descArray.map((word) => {
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    });
+    return capitalizedArray.join(" ");  // Join the array back into a string
+  };
+
+  const convertTemp2CelFah= (value) => {
+    if(tempUnit==="C"){
+      return (value-273.15);
+    }
+    if(tempUnit==="F"){
+      return (1.8*(value-273) + 32);
+    }
+  }
+
+  const convertTempUnit = (value) =>{
+    setTempUnit(value);
+    if(value ==="C" && !celciusTempUnitActive){
+      setCelciusTempUnitActive(true);
+      setFahTempUnitActive(false);
+    }
+    else if(value ==="F" && !fahTempUnitActive){
+      setFahTempUnitActive(true);
+      setCelciusTempUnitActive(false);
+    }
+    
+  }
+
+ // Fetch new weather data whenever the "city" changes
   useEffect(()=>{
     fetchWeatherData();  
-  } ,[]);
+  } ,[city]);
 
   //Update the forecast at the same time the forecastWeatherData is updated
   useEffect(()=>{
@@ -209,12 +256,20 @@ const WeatherInfo = () => {
     getForecastWeather(startDate);
   },[forecastWeatherData]);
 
+  useEffect(() => {
+    if (currentWeatherData) {
+      setTempDisplay(convertTemp2CelFah(currentWeatherData.main?.temp || ""));
+      setMinTempDisplay(convertTemp2CelFah(currentWeatherData.main?.temp_min || ""));
+      setMaxTempDisplay(convertTemp2CelFah(currentWeatherData.main?.temp_max || ""));
+    }
+  }, [tempUnit, currentWeatherData]);
+
   //Update the weather info display if currentWeatherData is updated
   useEffect(()=>{
     if (currentWeatherData) {
-      setTempDisplay(currentWeatherData.main?.temp || "");
-      setMinTempDisplay(currentWeatherData.main?.temp_min || "");
-      setMaxTempDisplay(currentWeatherData.main?.temp_max || "");
+      setTempDisplay(convertTemp2CelFah(currentWeatherData.main?.temp || ""));
+      setMinTempDisplay(convertTemp2CelFah(currentWeatherData.main?.temp_min || ""));
+      setMaxTempDisplay(convertTemp2CelFah(currentWeatherData.main?.temp_max || ""));
       setHumidityDisplay(currentWeatherData.main?.humidity || "");
       setWeatherDescDisplay(currentWeatherData?.weather[0].description|| "");
     }
@@ -223,7 +278,7 @@ const WeatherInfo = () => {
   //handle event when Search button is clicked
   const handleSubmit = (event) => {
     event.preventDefault();  // Prevent page reload on form submit
-    fetchWeatherData();  
+  // No need to call fetchWeatherData here; useEffect will take care of it
   };
 
   return (
@@ -237,21 +292,26 @@ const WeatherInfo = () => {
           <div id="current-weather">
             <div id="current-weather-left">
                 <div id="current-weather-logo">
-                <img src={generateWeatherLogo(weatherDescDisplay)}/>
-                <p>{tempDisplay}°K</p>
-              </div>
-              <div id="current-weather-info">
-                <ul>
-                  <li>Humidity: {humidityDisplay}%</li>
-                  <li>Min temp: {minTempDisplay}°K</li>
-                  <li>Max temp: {maxTempDisplay}°K</li>
-                </ul>
-              </div>
+                  <img src={generateWeatherLogo(weatherDescDisplay)}/>
+                  {~~(tempDisplay)}°
+                  
+                </div>
+                <div id="temp-units">
+                  <span ><button className= {celciusTempUnitActive ? 'active' : ''} onClick={()=>convertTempUnit("C")}>C</button> | 
+                  <button className= {fahTempUnitActive ? 'active' : ''} onClick={()=>convertTempUnit("F")}>F</button></span>
+                </div>
+                <div id="current-weather-info">
+                  <ul>
+                    <li>Humidity: {humidityDisplay}%</li>
+                    <li>Min temp: {~~(minTempDisplay)}°{tempUnit}</li>
+                    <li>Max temp: {~~(maxTempDisplay)}°{tempUnit}</li>
+                  </ul>
+                </div>
             </div>
             <div id="current-weather-datetime">
               <p><strong>{currentWeatherData.name}</strong></p>
-              <p>{day}, {time}</p>
-              <p>{weatherDescDisplay}</p>
+              <p>{date}, {day}, {time}</p>
+              <p>{setFirstLetterUppercase(weatherDescDisplay)}</p>
             </div>
           </div>
           <div id="forecast-weather">
@@ -263,19 +323,20 @@ const WeatherInfo = () => {
                     <div key={rowIndex}>
                     {  row.length >= 2 && row[2]?.dt_txt ? (
                         <button onClick={ () => displayWeatherInfo(row[2])}>
-                        {formatDateTime(row[2]?.dt_txt || "").newDate}<br />
+                        {getDay(new Date(row[2].dt_txt.slice(0,10)).getDay())}<br/>
                         <img src={generateWeatherLogo(row[2].weather[0].description)}/><br />
-                        { row[2]?.main.temp  || ""}° 
+                        { ~~convertTemp2CelFah(row[2]?.main.temp  || "")}° 
                         </button>
                       ) : row[0]?.dt_txt ?(
                         <button onClick={ () => displayWeatherInfo(row[0])}>
-                          {formatDateTime(row[0]?.dt_txt || "").newDate} <br />
+                          {getDay(new Date(row[0].dt_txt.slice(0,10)).getDay())}<br/>
                           <img src={generateWeatherLogo(row[0].weather[0].description)}></img><br />
-                          { row[0]?.main.temp  || ""}° 
+                          { ~~convertTemp2CelFah(row[0]?.main.temp  || "")}° 
                         </button>
                       ):null }
                     </div>
-                  ))
+                  )
+                )
             ):(
               <div>Loading forecast data...</div>  
             )}
